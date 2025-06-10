@@ -277,10 +277,6 @@ node dist/index.js /path/to/move/project
 - Add comprehensive documentation
 - Consider false positive rates
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## ⚠️ Disclaimer
 
 This tool is designed to assist in identifying potential security vulnerabilities in Move smart contracts. It should not be considered a substitute for professional security audits or formal verification. Always conduct thorough testing and consider professional security reviews before deploying smart contracts to production.
