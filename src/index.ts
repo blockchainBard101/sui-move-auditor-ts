@@ -398,12 +398,10 @@ class MoveSecurityAuditor {
     }
 
     private async checkComplexAccessControl(): Promise<void> {
-        // Check for admin functions without proper protection
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
 
             if (/public\s+fun\s+(admin_|owner_|set_|update_|change_)/.test(line)) {
-                // Look for various access control patterns in the function
                 const functionBody = this.getFunctionBody(i);
 
                 const hasAccessControl = [
