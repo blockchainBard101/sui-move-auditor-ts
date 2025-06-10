@@ -261,21 +261,21 @@ node dist/index.js test/sources/test.move
 node dist/index.js /path/to/move/project
 ```
 
-## 🤝 Contributing
+<!-- ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/new-check`
 3. Add your vulnerability patterns or improvements
 4. Test thoroughly with various Move contracts
-5. Submit a pull request
+5. Submit a pull request -->
 
-### Guidelines for New Vulnerability Patterns
+<!-- ### Guidelines for New Vulnerability Patterns
 
 - Provide clear, actionable recommendations
 - Include test cases demonstrating the vulnerability
 - Use appropriate severity levels
 - Add comprehensive documentation
-- Consider false positive rates
+- Consider false positive rates -->
 
 ## ⚠️ Disclaimer
 
