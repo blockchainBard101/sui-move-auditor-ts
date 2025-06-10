@@ -3,7 +3,6 @@ import * as path from 'path';
 import { Command } from 'commander';
 import { execSync } from 'child_process';
 
-// Types and Interfaces
 enum Severity {
     CRITICAL = 'CRITICAL',
     HIGH = 'HIGH',
@@ -163,7 +162,6 @@ class MoveSecurityAuditor {
             recommendation: 'Implement proper flash loan protections, fees, and reentrancy guards'
         },
 
-        // Input Validation
         {
             pattern: /public\s+fun\s+\w+\([^)]*\w+:\s*u\d+/,
             severity: Severity.MEDIUM,
@@ -174,7 +172,6 @@ class MoveSecurityAuditor {
             checkFunction: this.checkInputValidation.bind(this)
         },
 
-        // Dangerous Patterns
         {
             pattern: /unsafe_/,
             severity: Severity.HIGH,
@@ -192,7 +189,6 @@ class MoveSecurityAuditor {
             recommendation: 'Add proper checks and validations'
         },
 
-        // Best Practices
         {
             pattern: /assert!\([^,]+\)(?!.*,\s*\d+)/,
             severity: Severity.LOW,
@@ -210,7 +206,6 @@ class MoveSecurityAuditor {
             recommendation: 'Define constants for magic numbers'
         },
 
-        // Governance Issues
         {
             pattern: /vote.*execute|execute.*vote/i,
             severity: Severity.MEDIUM,
@@ -232,8 +227,6 @@ class MoveSecurityAuditor {
             console.error(`Error reading file ${filePath}:`, error);
             return [];
         }
-
-        // Run all security checks
         await this.runSecurityChecks();
 
         return [...this.findings];
@@ -269,7 +262,6 @@ class MoveSecurityAuditor {
             const fullPath = path.join(sourcesPath, entry.name);
 
             if (entry.isDirectory()) {
-                // Recursively scan subdirectories inside 'sources'
                 const subDirFiles = await this.findMoveFiles(fullPath);
                 files.push(...subDirFiles);
             } else if (entry.name.endsWith('.move')) {
@@ -289,7 +281,6 @@ class MoveSecurityAuditor {
 
                 const match = line.match(pattern.pattern);
                 if (match) {
-                    // Use custom check function if provided
                     if (pattern.checkFunction) {
                         if (pattern.checkFunction(line, i, this.lines)) {
                             this.addFinding(pattern, i, match[1] || match[0]);
@@ -300,22 +291,18 @@ class MoveSecurityAuditor {
                 }
             }
         }
-
-        // Run additional complex checks
         await this.checkStateConsistency();
         await this.checkComplexAccessControl();
         await this.checkReentrancyPatterns();
     }
 
     private checkAccessControl(line: string, lineIndex: number, allLines: string[]): boolean {
-        // console.log(line, lineIndex, allLines)
         const funcMatch = line.match(/public\s+fun\s+(\w+)/);
         // console.log(funcMatch);
         if (!funcMatch) return false;
 
         const funcName = funcMatch[1];
 
-        // Skip if function name suggests it's meant to be public
         const publicFunctionNames = ['initialize', 'create', 'new', 'get_', 'is_', 'has_', 'view_', 'read_'];
         if (publicFunctionNames.some(name => funcName.toLowerCase().includes(name))) {
             return false;
@@ -334,22 +321,14 @@ class MoveSecurityAuditor {
 
         const functionBody = allLines.slice(lineIndex, functionEnd + 1).join('\n');
 
-        // Check for various access control patterns
         const accessControlPatterns = [
-            // Capability parameters
             /_:\s*&\w*Cap\w*|\w+_cap:\s*&\w+/,
-            // Owner checks with ctx.sender()
             /assert!\s*\([^)]*ctx\.sender\(\)\s*==\s*[^)]*\.owner/,
             /assert!\s*\([^)]*\.owner\s*==\s*[^)]*ctx\.sender\(\)/,
-            // Owner field access in struct
             /assert!\s*\([^)]*\.owner\s*==\s*[^)]*\)/,
-            // Admin/authority checks
             /assert!\s*\([^)]*admin|authority|owner/i,
-            // Permission checks
             /has_permission|is_authorized|check_auth/,
-            // Whitelist checks  
             /whitelist|authorized_users/,
-            // Role-based checks
             /has_role|check_role|is_admin/
         ];
 
@@ -361,14 +340,11 @@ class MoveSecurityAuditor {
             }
         }
 
-        // Enhanced check for owner pattern in struct definition
         if (!hasAccessControl) {
-            // Look for struct definition with owner field
             const structPattern = /struct\s+\w+\s+has[^{]*\{[^}]*owner\s*:\s*address/;
             const fileContent = allLines.join('\n');
 
             if (structPattern.test(fileContent)) {
-                // Check if function uses the struct and has owner assertion
                 const ownerAssertPattern = /assert!\s*\([^)]*\.owner\s*==|assert!\s*\([^)]*ctx\.sender\(\)\s*==/;
                 if (ownerAssertPattern.test(functionBody)) {
                     hasAccessControl = true;
@@ -376,19 +352,15 @@ class MoveSecurityAuditor {
             }
         }
 
-        // Check for sensitive operations in function body
         const sensitiveOps = ['transfer', 'coin::', 'balance', 'withdraw', 'mint', 'burn', 'destroy', 'split', 'join'];
         const hasSensitiveOps = sensitiveOps.some(op => functionBody.includes(op));
 
-        // Additional context: check if this is a withdrawal/financial function
         const isFinancialOp = /withdraw|transfer|mint|burn|deposit|swap|exchange/i.test(funcName);
 
-        // Only flag if it's a sensitive operation without access control
         return hasSensitiveOps && !hasAccessControl && (isFinancialOp || funcName.includes('admin') || funcName.includes('owner'));
     }
 
     private checkInputValidation(line: string, lineIndex: number, allLines: string[]): boolean {
-        // Check if there are validation checks within the next few lines
         const nextLines = allLines.slice(lineIndex + 1, lineIndex + 10);
         const hasValidation = nextLines.some(nextLine =>
             /assert!/.test(nextLine) ||
@@ -403,12 +375,10 @@ class MoveSecurityAuditor {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
 
-            // Look for external calls
             const externalCalls = ['transfer::', 'event::', 'coin::from_balance'];
 
             for (const call of externalCalls) {
                 if (line.includes(call)) {
-                    // Check for state changes after external calls
                     for (let j = i + 1; j < Math.min(i + 10, this.lines.length); j++) {
                         if (/\w+\.\w+\s*=/.test(this.lines[j])) {
                             this.addFinding({
@@ -478,7 +448,6 @@ class MoveSecurityAuditor {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
 
-            // Look for patterns that might indicate reentrancy issues
             if (/call|invoke|execute/.test(line) && /external|cross/.test(line)) {
                 const hasReentrancyGuard = this.lines.slice(Math.max(0, i - 5), i + 10).some(l =>
                     /reentrancy|guard|lock|mutex/.test(l)
@@ -698,7 +667,6 @@ class MoveSecurityAuditor {
     }
 }
 
-// CLI Interface
 async function main() {
     const program = new Command();
 
@@ -758,8 +726,6 @@ async function main() {
                         console.log(`Critical/High: ${result.summary.criticalIssues}`);
                     }
                 }
-
-                // Exit with error code if critical issues found
                 if (result.summary.criticalIssues > 0) {
                     process.exit(1);
                 }
@@ -773,10 +739,9 @@ async function main() {
     await program.parseAsync();
 }
 
-// Export for use as module
 export { MoveSecurityAuditor, Severity, SecurityFinding, AuditResult };
 
-// Run CLI if called directly
+
 if (require.main === module) {
     main().catch(console.error);
 }
@@ -805,11 +770,9 @@ if (require.main === module) {
 //             }
 //         };
 
-//         // Generate and display report
 //         const report = new MoveSecurityAuditor().buildMarkdownReport(result);
 //         console.log(report);
 
-//         // Exit with error code if critical issues found
 //         if (result.summary.criticalIssues > 0) {
 //             process.exit(1);
 //         }
