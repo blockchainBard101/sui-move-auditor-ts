@@ -66,6 +66,11 @@ class MoveSecurityAuditor {
         };
     }
 
+    private isCommentedLine(line: string): boolean {
+        const trimmedLine = line.trim();
+        return trimmedLine.startsWith('//');
+    }
+
     public async performStaticAnalysis(contractPath: string): Promise<void> {
         try {
             console.log('🔧 Performing static analysis...');
@@ -213,7 +218,17 @@ class MoveSecurityAuditor {
             title: 'Missing Timelock',
             description: 'Governance operation without timelock delay',
             recommendation: 'Implement timelock mechanism between voting and execution'
-        }
+        },
+
+        {
+            pattern: /\.join\s*\(\s*\w+\.into_balance\(\)\s*\)|\.join\s*\(\s*coin::\w+\s*\)|balance\.join\s*\(/,
+            severity: Severity.MEDIUM,
+            category: 'Coin Operations',
+            title: 'Missing Zero Coin Check',
+            description: 'Coin operation without checking if the coin value is zero',
+            recommendation: 'Add zero value check before coin operations to prevent unnecessary gas consumption and logical issues',
+            checkFunction: this.checkZeroCoin.bind(this)
+        },
     ];
 
     public async auditFile(filePath: string): Promise<SecurityFinding[]> {
@@ -275,6 +290,9 @@ class MoveSecurityAuditor {
     private async runSecurityChecks(): Promise<void> {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
+            if (this.isCommentedLine(line)) {
+                continue;
+            }
 
             for (const pattern of this.vulnerabilityPatterns) {
                 if (this.shouldSkipPattern(pattern)) continue;
@@ -296,9 +314,57 @@ class MoveSecurityAuditor {
         await this.checkReentrancyPatterns();
     }
 
+    private checkZeroCoin(line: string, lineIndex: number, allLines: string[]): boolean {
+        let coinParamName = '';
+        
+        let functionStartIndex = lineIndex;
+        for (let i = lineIndex; i >= 0; i--) {
+            if (this.isCommentedLine(allLines[i])) {
+                continue;
+            }
+            if (/public\s+fun\s+\w+|fun\s+\w+/.test(allLines[i])) {
+                functionStartIndex = i;
+                break;
+            }
+        }
+
+        const functionSignature = allLines[functionStartIndex];
+        const coinParamMatch = functionSignature.match(/(\w+):\s*Coin<[^>]+>/);
+        if (coinParamMatch) {
+            coinParamName = coinParamMatch[1];
+        }
+
+        if (!coinParamName) {
+            const coinOpMatch = line.match(/(\w+)\.into_balance\(\)|coin::(\w+)/);
+            if (coinOpMatch) {
+                coinParamName = coinOpMatch[1] || coinOpMatch[2];
+            }
+        }
+
+        const checkRange = Math.max(0, functionStartIndex);
+        const precedingLines = allLines.slice(checkRange, lineIndex + 1)
+            .filter(line => !this.isCommentedLine(line))
+            .join('\n');
+        
+        const zeroCheckPatterns = [
+            new RegExp(`coin::value\\s*\\(\\s*&?${coinParamName}\\s*\\)\\s*>\\s*0`),
+            new RegExp(`${coinParamName}\\.value\\(\\)\\s*>\\s*0`),
+            new RegExp(`assert!\\s*\\([^)]*${coinParamName}[^)]*>\\s*0`),
+            new RegExp(`assert!\\s*\\([^)]*coin::value\\s*\\([^)]*${coinParamName}[^)]*>\\s*0`),
+            /coin::value\s*\([^)]+\)\s*>\s*0/,
+            /\.value\(\)\s*>\s*0/,
+            /assert!\s*\([^)]*>\s*0/
+        ];
+
+        const hasZeroCheck = zeroCheckPatterns.some(pattern => pattern.test(precedingLines));
+
+        const hasConditionalCheck = /if\s*\([^)]*>\s*0\)|if\s*\([^)]*!=\s*0\)/.test(precedingLines);
+
+        return !hasZeroCheck && !hasConditionalCheck;
+    }
+
     private checkAccessControl(line: string, lineIndex: number, allLines: string[]): boolean {
         const funcMatch = line.match(/public\s+fun\s+(\w+)/);
-        // console.log(funcMatch);
         if (!funcMatch) return false;
 
         const funcName = funcMatch[1];
@@ -311,6 +377,10 @@ class MoveSecurityAuditor {
         let braceCount = 0;
         let functionEnd = lineIndex;
         for (let j = lineIndex; j < allLines.length; j++) {
+            if (this.isCommentedLine(allLines[j])) {
+                continue;
+            }
+            
             braceCount += (allLines[j].match(/\{/g) || []).length;
             braceCount -= (allLines[j].match(/\}/g) || []).length;
             if (braceCount === 0 && j > lineIndex) {
@@ -319,7 +389,9 @@ class MoveSecurityAuditor {
             }
         }
 
-        const functionBody = allLines.slice(lineIndex, functionEnd + 1).join('\n');
+        const functionBody = allLines.slice(lineIndex, functionEnd + 1)
+            .filter(line => !this.isCommentedLine(line))
+            .join('\n');
 
         const accessControlPatterns = [
             /_:\s*&\w*Cap\w*|\w+_cap:\s*&\w+/,
@@ -342,7 +414,7 @@ class MoveSecurityAuditor {
 
         if (!hasAccessControl) {
             const structPattern = /struct\s+\w+\s+has[^{]*\{[^}]*owner\s*:\s*address/;
-            const fileContent = allLines.join('\n');
+            const fileContent = allLines.filter(line => !this.isCommentedLine(line)).join('\n');
 
             if (structPattern.test(fileContent)) {
                 const ownerAssertPattern = /assert!\s*\([^)]*\.owner\s*==|assert!\s*\([^)]*ctx\.sender\(\)\s*==/;
@@ -361,7 +433,9 @@ class MoveSecurityAuditor {
     }
 
     private checkInputValidation(line: string, lineIndex: number, allLines: string[]): boolean {
-        const nextLines = allLines.slice(lineIndex + 1, lineIndex + 10);
+        const nextLines = allLines.slice(lineIndex + 1, lineIndex + 10)
+            .filter(line => !this.isCommentedLine(line));
+            
         const hasValidation = nextLines.some(nextLine =>
             /assert!/.test(nextLine) ||
             /require!/.test(nextLine) ||
@@ -374,12 +448,19 @@ class MoveSecurityAuditor {
     private async checkStateConsistency(): Promise<void> {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
+            if (this.isCommentedLine(line)) {
+                continue;
+            }
 
             const externalCalls = ['transfer::', 'event::', 'coin::from_balance'];
 
             for (const call of externalCalls) {
                 if (line.includes(call)) {
                     for (let j = i + 1; j < Math.min(i + 10, this.lines.length); j++) {
+                        if (this.isCommentedLine(this.lines[j])) {
+                            continue;
+                        }
+                        
                         if (/\w+\.\w+\s*=/.test(this.lines[j])) {
                             this.addFinding({
                                 pattern: /./,
@@ -400,6 +481,10 @@ class MoveSecurityAuditor {
     private async checkComplexAccessControl(): Promise<void> {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
+
+            if (this.isCommentedLine(line)) {
+                continue;
+            }
 
             if (/public\s+fun\s+(admin_|owner_|set_|update_|change_)/.test(line)) {
                 const functionBody = this.getFunctionBody(i);
@@ -430,6 +515,10 @@ class MoveSecurityAuditor {
         let endLine = startLine;
 
         for (let j = startLine; j < this.lines.length; j++) {
+            if (this.isCommentedLine(this.lines[j])) {
+                continue;
+            }
+            
             braceCount += (this.lines[j].match(/\{/g) || []).length;
             braceCount -= (this.lines[j].match(/\}/g) || []).length;
 
@@ -439,17 +528,23 @@ class MoveSecurityAuditor {
             }
         }
 
-        return this.lines.slice(startLine, endLine + 1).join('\n');
+        return this.lines.slice(startLine, endLine + 1)
+            .filter(line => !this.isCommentedLine(line))
+            .join('\n');
     }
 
     private async checkReentrancyPatterns(): Promise<void> {
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
 
+            if (this.isCommentedLine(line)) {
+                continue;
+            }
+
             if (/call|invoke|execute/.test(line) && /external|cross/.test(line)) {
-                const hasReentrancyGuard = this.lines.slice(Math.max(0, i - 5), i + 10).some(l =>
-                    /reentrancy|guard|lock|mutex/.test(l)
-                );
+                const hasReentrancyGuard = this.lines.slice(Math.max(0, i - 5), i + 10)
+                    .filter(l => !this.isCommentedLine(l))
+                    .some(l => /reentrancy|guard|lock|mutex/.test(l));
 
                 if (!hasReentrancyGuard) {
                     this.addFinding({
@@ -515,7 +610,8 @@ class MoveSecurityAuditor {
             .map((line, idx) => {
                 const actualLineNum = start + idx + 1;
                 const marker = actualLineNum === lineIndex + 1 ? '→' : ' ';
-                return `${marker} ${actualLineNum.toString().padStart(4)}: ${line}`;
+                const commentStatus = this.isCommentedLine(line) ? ' (COMMENT)' : '';
+                return `${marker} ${actualLineNum.toString().padStart(4)}: ${line}${commentStatus}`;
             })
             .join('\n');
     }
@@ -738,7 +834,6 @@ async function main() {
 }
 
 export { MoveSecurityAuditor, Severity, SecurityFinding, AuditResult };
-
 
 if (require.main === module) {
     main().catch(console.error);
