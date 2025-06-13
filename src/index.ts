@@ -316,7 +316,7 @@ class MoveSecurityAuditor {
 
     private checkZeroCoin(line: string, lineIndex: number, allLines: string[]): boolean {
         let coinParamName = '';
-        
+
         let functionStartIndex = lineIndex;
         for (let i = lineIndex; i >= 0; i--) {
             if (this.isCommentedLine(allLines[i])) {
@@ -345,7 +345,7 @@ class MoveSecurityAuditor {
         const precedingLines = allLines.slice(checkRange, lineIndex + 1)
             .filter(line => !this.isCommentedLine(line))
             .join('\n');
-        
+
         const zeroCheckPatterns = [
             new RegExp(`coin::value\\s*\\(\\s*&?${coinParamName}\\s*\\)\\s*>\\s*0`),
             new RegExp(`${coinParamName}\\.value\\(\\)\\s*>\\s*0`),
@@ -364,78 +364,83 @@ class MoveSecurityAuditor {
     }
 
     private checkAccessControl(line: string, lineIndex: number, allLines: string[]): boolean {
-        const funcMatch = line.match(/public\s+fun\s+(\w+)/);
-        if (!funcMatch) return false;
+    const funcMatch = line.match(/public\s+fun\s+(\w+)\s*\(([^)]*)\)/);
+    if (!funcMatch) return false;
 
-        const funcName = funcMatch[1];
+    const funcName = funcMatch[1];
+    const params = funcMatch[2];
+    const paramNames = params
+        .split(',')
+        .map(p => p.trim().split(':')[0].trim())
+        .filter(p => p && !p.includes('&') && !p.includes('<') && !p.includes('::'));
 
-        const publicFunctionNames = ['initialize', 'create', 'new', 'get_', 'is_', 'has_', 'view_', 'read_'];
-        if (publicFunctionNames.some(name => funcName.toLowerCase().includes(name))) {
-            return false;
-        }
-
-        let braceCount = 0;
-        let functionEnd = lineIndex;
-        for (let j = lineIndex; j < allLines.length; j++) {
-            if (this.isCommentedLine(allLines[j])) {
-                continue;
-            }
-            
-            braceCount += (allLines[j].match(/\{/g) || []).length;
-            braceCount -= (allLines[j].match(/\}/g) || []).length;
-            if (braceCount === 0 && j > lineIndex) {
-                functionEnd = j;
-                break;
-            }
-        }
-
-        const functionBody = allLines.slice(lineIndex, functionEnd + 1)
-            .filter(line => !this.isCommentedLine(line))
-            .join('\n');
-
-        const accessControlPatterns = [
-            /_:\s*&\w*Cap\w*|\w+_cap:\s*&\w+/,
-            /assert!\s*\([^)]*ctx\.sender\(\)\s*==\s*[^)]*\.owner/,
-            /assert!\s*\([^)]*\.owner\s*==\s*[^)]*ctx\.sender\(\)/,
-            /assert!\s*\([^)]*\.owner\s*==\s*[^)]*\)/,
-            /assert!\s*\([^)]*admin|authority|owner/i,
-            /has_permission|is_authorized|check_auth/,
-            /whitelist|authorized_users/,
-            /has_role|check_role|is_admin/
-        ];
-
-        let hasAccessControl = false;
-        for (const pattern of accessControlPatterns) {
-            if (pattern.test(functionBody)) {
-                hasAccessControl = true;
-                break;
-            }
-        }
-
-        if (!hasAccessControl) {
-            const structPattern = /struct\s+\w+\s+has[^{]*\{[^}]*owner\s*:\s*address/;
-            const fileContent = allLines.filter(line => !this.isCommentedLine(line)).join('\n');
-
-            if (structPattern.test(fileContent)) {
-                const ownerAssertPattern = /assert!\s*\([^)]*\.owner\s*==|assert!\s*\([^)]*ctx\.sender\(\)\s*==/;
-                if (ownerAssertPattern.test(functionBody)) {
-                    hasAccessControl = true;
-                }
-            }
-        }
-
-        const sensitiveOps = ['transfer', 'coin::', 'balance', 'withdraw', 'mint', 'burn', 'destroy', 'split', 'join'];
-        const hasSensitiveOps = sensitiveOps.some(op => functionBody.includes(op));
-
-        const isFinancialOp = /withdraw|transfer|mint|burn|deposit|swap|exchange/i.test(funcName);
-
-        return hasSensitiveOps && !hasAccessControl && (isFinancialOp || funcName.includes('admin') || funcName.includes('owner'));
+    const publicFunctionNames = ['initialize', 'create', 'new', 'get_', 'is_', 'has_', 'view_', 'read_'];
+    if (publicFunctionNames.some(name => funcName.toLowerCase().includes(name))) {
+        return false;
     }
+
+    let braceCount = 0;
+    let functionEnd = lineIndex;
+    for (let j = lineIndex; j < allLines.length; j++) {
+        if (allLines[j].trim().startsWith('//')) continue;
+        braceCount += (allLines[j].match(/\{/g) || []).length;
+        braceCount -= (allLines[j].match(/\}/g) || []).length;
+        if (braceCount === 0 && j > lineIndex) {
+            functionEnd = j;
+            break;
+        }
+    }
+
+    const functionBody = allLines.slice(lineIndex, functionEnd + 1)
+        .filter(line => !line.trim().startsWith('//'))
+        .join('\n');
+
+    const accessControlPatterns = [
+        /_:\s*&\w*Cap\w*|\w+_cap:\s*&\w+/,
+        /assert!\s*\([^)]*ctx\.sender\(\)\s*==\s*[^)]*\.owner/,
+        /assert!\s*\([^)]*\.owner\s*==\s*[^)]*ctx\.sender\(\)/,
+        /assert!\s*\([^)]*\.owner\s*==\s*[^)]*\)/,
+        /assert!\s*\([^)]*\.owner\s*==\s*(ctx\.sender\(\)|tx_context::sender\(ctx\))\s*,/,
+        /assert!\s*\([^)]*admin|authority|owner/i,
+        /has_permission|is_authorized|check_auth/,
+        /whitelist|authorized_users/,
+        /has_role|check_role|is_admin/
+    ];
+
+    const hasAccessControl = accessControlPatterns.some(pattern => pattern.test(functionBody));
+
+    const unsafeOwnerAssignment = allLines.slice(lineIndex, functionEnd + 1).some(line => {
+        const assignMatch = line.match(/(\w+)\.owner\s*=\s*(\w+|ctx\.sender\(\)|tx_context::sender\(ctx\))/);
+        if (!assignMatch) return false;
+        const [, struct, value] = assignMatch;
+
+        const isParam = paramNames.includes(value);
+        const isSender = /ctx\.sender\(\)|tx_context::sender\(ctx\)/.test(value);
+
+        if ((isParam || isSender) &&
+            !new RegExp(`assert!\\s*\\(\\s*${struct}\\.owner\\s*==\\s*(ctx\\.sender\\(\\)|tx_context::sender\\(ctx\\))\\s*,`).test(functionBody)) {
+            return true;
+        }
+        return false;
+    });
+
+    if (unsafeOwnerAssignment) {
+        return true; 
+    }
+
+    const sensitiveOps = ['transfer', 'coin::', 'balance', 'withdraw', 'mint', 'burn', 'destroy', 'split', 'join'];
+    const hasSensitiveOps = sensitiveOps.some(op => functionBody.includes(op));
+
+    const isFinancialOp = /withdraw|transfer|mint|burn|deposit|swap|exchange/i.test(funcName);
+
+    return hasSensitiveOps && !hasAccessControl && (isFinancialOp || funcName.includes('admin') || funcName.includes('owner'));
+}
+
 
     private checkInputValidation(line: string, lineIndex: number, allLines: string[]): boolean {
         const nextLines = allLines.slice(lineIndex + 1, lineIndex + 10)
             .filter(line => !this.isCommentedLine(line));
-            
+
         const hasValidation = nextLines.some(nextLine =>
             /assert!/.test(nextLine) ||
             /require!/.test(nextLine) ||
@@ -460,7 +465,7 @@ class MoveSecurityAuditor {
                         if (this.isCommentedLine(this.lines[j])) {
                             continue;
                         }
-                        
+
                         if (/\w+\.\w+\s*=/.test(this.lines[j])) {
                             this.addFinding({
                                 pattern: /./,
@@ -518,7 +523,7 @@ class MoveSecurityAuditor {
             if (this.isCommentedLine(this.lines[j])) {
                 continue;
             }
-            
+
             braceCount += (this.lines[j].match(/\{/g) || []).length;
             braceCount -= (this.lines[j].match(/\}/g) || []).length;
 

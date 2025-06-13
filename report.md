@@ -1,15 +1,15 @@
 # 🛡️ Move Smart Contract Security Audit Report
 
-**Generated:** 2025-06-11T18:12:02.463Z
+**Generated:** 2025-06-13T16:48:53.057Z
 **Files Audited:** 4
-**Total Findings:** 57
+**Total Findings:** 56
 
 ## 📊 Executive Summary
 
 | Severity | Count | Priority |
 |----------|-------|----------|
 | 🔴 CRITICAL | 5 | Immediate |
-| 🟠 HIGH | 15 | High |
+| 🟠 HIGH | 14 | High |
 | 🟡 MEDIUM | 24 | Medium |
 | 🔵 LOW | 13 | Low |
 
@@ -270,30 +270,7 @@
 
 ---
 
-### 12. 🟠 Potential Missing Access Control
-
-**Severity:** HIGH
-**Category:** Access Control
-**File:** test/sources/test.move
-**Line:** 12
-**Confidence:** MEDIUM
-
-**Description:** Public function may lack proper access control mechanisms: withdraw
-
-**Code:**
-```move
-    10: 
-    11: #[allow(lint(self_transfer))]
-→   12: public fun withdraw<T>(bank: &mut Bank<T>, amount: u64, ctx: &mut TxContext){
-    13:     assert!(bank.balance.value() >= amount, 0);
-    14:     let withdrawal_coin = bank.balance.split(amount);
-```
-
-**Recommendation:** Add capability parameters, owner checks, or other access control mechanisms
-
----
-
-### 13. 🟠 Unchecked Division
+### 12. 🟠 Unchecked Division
 
 **Severity:** HIGH
 **Category:** Integer Operations
@@ -316,7 +293,7 @@
 
 ---
 
-### 14. 🟠 Unchecked Division
+### 13. 🟠 Unchecked Division
 
 **Severity:** HIGH
 **Category:** Integer Operations
@@ -339,7 +316,7 @@
 
 ---
 
-### 15. 🟠 Unchecked Division
+### 14. 🟠 Unchecked Division
 
 **Severity:** HIGH
 **Category:** Integer Operations
@@ -362,7 +339,7 @@
 
 ---
 
-### 16. 🟠 Unchecked Division
+### 15. 🟠 Unchecked Division
 
 **Severity:** HIGH
 **Category:** Integer Operations
@@ -385,7 +362,7 @@
 
 ---
 
-### 17. 🟠 Potential Missing Access Control
+### 16. 🟠 Potential Missing Access Control
 
 **Severity:** HIGH
 **Category:** Access Control
@@ -408,7 +385,7 @@
 
 ---
 
-### 18. 🟠 Unsafe Function Usage
+### 17. 🟠 Unsafe Function Usage
 
 **Severity:** HIGH
 **Category:** Dangerous Patterns
@@ -431,7 +408,7 @@
 
 ---
 
-### 19. 🟠 Unsafe Function Usage
+### 18. 🟠 Unsafe Function Usage
 
 **Severity:** HIGH
 **Category:** Dangerous Patterns
@@ -454,7 +431,7 @@
 
 ---
 
-### 20. 🟠 Unsafe Function Usage
+### 19. 🟠 Unsafe Function Usage
 
 **Severity:** HIGH
 **Category:** Dangerous Patterns
@@ -477,7 +454,7 @@
 
 ---
 
-### 21. 🟡 Unchecked Multiplication
+### 20. 🟡 Unchecked Multiplication
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -500,7 +477,7 @@
 
 ---
 
-### 22. 🟡 Unchecked Subtraction
+### 21. 🟡 Unchecked Subtraction
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -523,7 +500,7 @@
 
 ---
 
-### 23. 🟡 Unchecked Multiplication
+### 22. 🟡 Unchecked Multiplication
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -546,7 +523,7 @@
 
 ---
 
-### 24. 🟡 Missing Input Validation
+### 23. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -569,7 +546,7 @@
 
 ---
 
-### 25. 🟡 Unchecked Multiplication
+### 24. 🟡 Unchecked Multiplication
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -592,7 +569,7 @@
 
 ---
 
-### 26. 🟡 Missing Input Validation
+### 25. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -615,7 +592,7 @@
 
 ---
 
-### 27. 🟡 Unchecked Addition
+### 26. 🟡 Unchecked Addition
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -638,7 +615,7 @@
 
 ---
 
-### 28. 🟡 Unchecked Multiplication
+### 27. 🟡 Unchecked Multiplication
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -661,7 +638,7 @@
 
 ---
 
-### 29. 🟡 Unchecked Subtraction
+### 28. 🟡 Unchecked Subtraction
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -684,7 +661,7 @@
 
 ---
 
-### 30. 🟡 Unchecked Addition
+### 29. 🟡 Unchecked Addition
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -707,7 +684,7 @@
 
 ---
 
-### 31. 🟡 Missing Input Validation
+### 30. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -730,7 +707,7 @@
 
 ---
 
-### 32. 🟡 Unchecked Multiplication
+### 31. 🟡 Unchecked Multiplication
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -753,7 +730,7 @@
 
 ---
 
-### 33. 🟡 Unchecked Subtraction
+### 32. 🟡 Unchecked Subtraction
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -776,7 +753,7 @@
 
 ---
 
-### 34. 🟡 State Change After External Call
+### 33. 🟡 State Change After External Call
 
 **Severity:** MEDIUM
 **Category:** State Consistency
@@ -799,7 +776,7 @@
 
 ---
 
-### 35. 🟡 State Change After External Call
+### 34. 🟡 State Change After External Call
 
 **Severity:** MEDIUM
 **Category:** State Consistency
@@ -816,6 +793,29 @@
 →  163:     auction.highest_bid = bid_amount;
    164:     auction.highest_bidder = tx_context::sender(ctx);
    165:     
+```
+
+**Recommendation:** Move state changes before external calls (Checks-Effects-Interactions)
+
+---
+
+### 35. 🟡 State Change After External Call
+
+**Severity:** MEDIUM
+**Category:** State Consistency
+**File:** test/sources/nft.move
+**Line:** 247
+**Confidence:** MEDIUM
+
+**Description:** State modification after external call violates CEI pattern: nft.owner = to;
+
+**Code:**
+```move
+   245:     transfer::public_transfer(payment, nft.owner);
+   246:     
+→  247:     nft.owner = to;
+   248:     transfer::transfer(nft, to);
+   249: }
 ```
 
 **Recommendation:** Move state changes before external calls (Checks-Effects-Interactions)
@@ -845,53 +845,30 @@
 
 ---
 
-### 37. 🟡 State Change After External Call
-
-**Severity:** MEDIUM
-**Category:** State Consistency
-**File:** test/sources/nft.move
-**Line:** 247
-**Confidence:** MEDIUM
-
-**Description:** State modification after external call violates CEI pattern: nft.owner = to;
-
-**Code:**
-```move
-   245:     transfer::public_transfer(payment, nft.owner);
-   246:     
-→  247:     nft.owner = to;
-   248:     transfer::transfer(nft, to);
-   249: }
-```
-
-**Recommendation:** Move state changes before external calls (Checks-Effects-Interactions)
-
----
-
-### 38. 🟡 Missing Zero Coin Check
+### 37. 🟡 Missing Zero Coin Check
 
 **Severity:** MEDIUM
 **Category:** Coin Operations
 **File:** test/sources/test.move
-**Line:** 20
+**Line:** 25
 **Confidence:** MEDIUM
 
 **Description:** Coin operation without checking if the coin value is zero: balance.join(
 
 **Code:**
 ```move
-    18: 
-    19: public fun add_balance<T>(user: &mut Bank<T>, user_coin: Coin<T>) {
-→   20:     user.balance.join(user_coin.into_balance());
-    21: }
-    22: 
+    23: 
+    24: public fun add_balance<T>(user: &mut Bank<T>, user_coin: Coin<T>) {
+→   25:     user.balance.join(user_coin.into_balance());
+    26: }
+    27: 
 ```
 
 **Recommendation:** Add zero value check before coin operations to prevent unnecessary gas consumption and logical issues
 
 ---
 
-### 39. 🟡 Unchecked Addition
+### 38. 🟡 Unchecked Addition
 
 **Severity:** MEDIUM
 **Category:** Integer Operations
@@ -914,7 +891,7 @@
 
 ---
 
-### 40. 🟡 Missing Input Validation
+### 39. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -937,7 +914,7 @@
 
 ---
 
-### 41. 🟡 Missing Input Validation
+### 40. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -960,7 +937,7 @@
 
 ---
 
-### 42. 🟡 Missing Timelock
+### 41. 🟡 Missing Timelock
 
 **Severity:** MEDIUM
 **Category:** Governance
@@ -983,7 +960,7 @@
 
 ---
 
-### 43. 🟡 Missing Input Validation
+### 42. 🟡 Missing Input Validation
 
 **Severity:** MEDIUM
 **Category:** Input Validation
@@ -1006,7 +983,7 @@
 
 ---
 
-### 44. 🟡 State Change After External Call
+### 43. 🟡 State Change After External Call
 
 **Severity:** MEDIUM
 **Category:** State Consistency
@@ -1029,7 +1006,7 @@
 
 ---
 
-### 45. 🔵 Magic Number
+### 44. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1052,7 +1029,7 @@
 
 ---
 
-### 46. 🔵 Missing Error Code in Assert
+### 45. 🔵 Missing Error Code in Assert
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1075,7 +1052,7 @@
 
 ---
 
-### 47. 🔵 Magic Number
+### 46. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1098,7 +1075,7 @@
 
 ---
 
-### 48. 🔵 Magic Number
+### 47. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1121,7 +1098,7 @@
 
 ---
 
-### 49. 🔵 Magic Number
+### 48. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1144,7 +1121,7 @@
 
 ---
 
-### 50. 🔵 Magic Number
+### 49. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1167,7 +1144,7 @@
 
 ---
 
-### 51. 🔵 Magic Number
+### 50. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1190,7 +1167,7 @@
 
 ---
 
-### 52. 🔵 Magic Number
+### 51. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1213,7 +1190,7 @@
 
 ---
 
-### 53. 🔵 Magic Number
+### 52. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1236,7 +1213,7 @@
 
 ---
 
-### 54. 🔵 Missing Error Code in Assert
+### 53. 🔵 Missing Error Code in Assert
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1259,7 +1236,7 @@
 
 ---
 
-### 55. 🔵 Magic Number
+### 54. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1282,7 +1259,7 @@
 
 ---
 
-### 56. 🔵 Magic Number
+### 55. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
@@ -1305,7 +1282,7 @@
 
 ---
 
-### 57. 🔵 Magic Number
+### 56. 🔵 Magic Number
 
 **Severity:** LOW
 **Category:** Best Practices
